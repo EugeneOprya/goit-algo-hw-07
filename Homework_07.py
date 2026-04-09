@@ -10,8 +10,7 @@ class AddressBook(UserDict):
         return self.data.get(name)
 
     def delete(self, name):
-        if name in self.data.get("name"):
-            self.data.pop(name, None)
+        self.data.pop(name, None)
 
     def __str__(self):
         return "\n".join(str(record) for record in self.data.values())
