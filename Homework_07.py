@@ -22,7 +22,7 @@ class AddressBook(UserDict):
         for record in self.data.values():
             if record.birthday is None:
                 continue
-            birthday_date = record.birthday.value.date()
+            birthday_date = datetime.strptime(record.birthday.value, "%d.%m.%Y").date()
             birthday_this_year = birthday_date.replace(year=today.year)
 
             if birthday_this_year < today:
@@ -72,7 +72,7 @@ class Record:
 
     def __str__(self):
         birthday_str = (
-            self.birthday.value.strftime("%d.%m.%Y") if self.birthday else "Not set"
+            self.birthday.value if self.birthday else "Not set"
         )
         return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, birthday: {birthday_str}"
 
@@ -111,7 +111,9 @@ class Record:
 class Birthday(Field):
     def __init__(self, value):
         try:
-            self.value = datetime.strptime(value, "%d.%m.%Y")
+            date_obj = datetime.strptime(value, "%d.%m.%Y")
+            if date_obj:
+                self.value = value
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
 
@@ -126,6 +128,8 @@ def input_error(func):
             return "User not found"
         except IndexError:
             return "Enter user name"
+        except AttributeError:
+            return "Contact not found."
 
     return inner
 
@@ -154,38 +158,41 @@ def add_contact(args, book: AddressBook):
 def add_birthday(args, book):
     name, birthday = args
     record = book.find(name)
-    if record:
-        record.add_birthday(birthday)
-        return "Birthday added."
-    return "Contact not found."
+    if record is None:
+        raise KeyError("Contact not found.")
+    record.add_birthday(birthday)
+    return "Birthday added."
 
 
 @input_error
 def show_birthday(args, book):
     name = args[0]
     record = book.find(name)
-    if record and record.birthday:
-        return record.birthday.value.strftime("%d.%m.%Y")
-    return "Birthday not found or contact doesn't exist."
+    if record is None:
+        raise KeyError("Contact not found.")
+    if record.birthday is None:
+        return "Birthday is not set for this contact."
+    return record.birthday.value
 
 
 @input_error
 def change_contact(args, book):
     name, old_phone, new_phone = args
     record = book.find(name)
-    if record:
-        record.edit_phone(old_phone, new_phone)
-        return "Contact updated."
-    return "Contact not found."
+    if record is None:
+        raise KeyError("Contact not found.")
+    record.edit_phone(old_phone, new_phone)
+    return "Contact updated."
 
 
 @input_error
 def show_phone(args, book):
     name = args[0]
     record = book.find(name)
-    if record:
-        return "; ".join(p.value for p in record.phones)
-    return "Contact not found."
+    if record is None:
+        raise KeyError("Contact not found.")
+
+    return "; ".join(p.value for p in record.phones)
 
 
 @input_error
